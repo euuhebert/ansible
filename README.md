@@ -1,10 +1,13 @@
-# Guia de Uso do Ansible
+# Guia Completo de Uso do Ansible
 
-Este repositório contém uma documentação prática para configurar e utilizar o Ansible, uma ferramenta de automação de TI que simplifica o gerenciamento de configurações e a execução de tarefas repetitivas em ambientes de infraestrutura. Aqui você encontrará instruções detalhadas e boas práticas para instalação, configuração e execução de comandos no Ansible.
+Este repositório contém uma documentação prática e detalhada para configurar e utilizar o Ansible, uma poderosa ferramenta de automação de TI. Aqui você encontrará tudo o que precisa para gerenciar configurações e executar tarefas repetitivas em ambientes de infraestrutura.
 
-> **Nota:** Esta documentação está em constante atualização, então fique atento a novos conteúdos e melhorias.
+> **Nota:** Esta documentação está em constante atualização. Verifique regularmente para obter novos conteúdos e melhorias.
+
+---
 
 ## Sumário
+
 - [Introdução ao Ansible](#introdução-ao-ansible)
 - [Instalação do Ansible](#instalação-do-ansible)
   - [Instalação no Debian](#instalação-no-debian)
@@ -14,158 +17,215 @@ Este repositório contém uma documentação prática para configurar e utilizar
 - [Configurações de Acesso por Chave SSH](#configurações-de-acesso-por-chave-ssh)
 - [Configurações do Ansible](#configurações-do-ansible)
 - [Sintaxe e Comandos](#sintaxe-e-comandos)
-
+  - [Módulo de usuários](#módulo-de-usuários)
+  - [Módulo de pacotes](#módulo-de-pacotes)
+  - [Gerenciamento de serviços](#gerenciamento-de-serviços)
+  - [Reiniciar servidores](#reiniciar-servidores)
+- [Playbooks](#playbooks)
 ---
 
 ## Introdução ao Ansible
-O Ansible é uma ferramenta de automação open-source que facilita o gerenciamento de configurações e a execução de tarefas em servidores. Ele permite gerenciar de forma eficiente vários servidores com um único comando, tornando-o ideal para DevOps, administração de sistemas e automação de infraestrutura.
+
+O Ansible é uma ferramenta de automação open-source que facilita o gerenciamento de configurações e a execução de tarefas em servidores. Com ele, é possível gerenciar vários servidores com um único comando, ideal para DevOps, administração de sistemas e automação de infraestrutura.
 
 ---
 
 ## Instalação do Ansible
 
 ### Instalação no Debian
-Para instalar o Ansible em sistemas Debian ou Ubuntu, execute os seguintes comandos:
-
-```bash
-sudo apt update
-sudo apt install -y ansible
-```
+1. Atualize os pacotes:
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   ```
+2. Instale o Ansible:
+   ```bash
+   sudo apt install ansible -y
+   ```
+3. Verifique a instalação:
+   ```bash
+   ansible --version
+   ```
 
 ### Instalação em distribuições baseadas em Red Hat
-Para instalar o Ansible em sistemas baseados no Red Hat, como o CentOS ou Fedora, use:
-
-```bash
-sudo dnf install -y ansible
-```
+1. Ative o repositório EPEL:
+   ```bash
+   sudo yum install epel-release -y
+   ```
+2. Instale o Ansible:
+   ```bash
+   sudo yum install ansible -y
+   ```
+3. Verifique a instalação:
+   ```bash
+   ansible --version
+   ```
 
 ---
 
 ## Boas Práticas Ansible
 
-### Pré-Requisitos
-- Ter o **Python 3** instalado nas máquinas
-- **SSH** instalado e configurado
+- Mantenha seus playbooks organizados em diretórios separados.
+- Utilize o controle de versão (como Git) para gerenciar alterações em seus arquivos.
+- Utilize configurações reutilizáveis, como variáveis e roles.
+- Prefira acessar as máquinas via chave SSH para maior segurança.
 
-### Passo 1: Criar usuário ansible em cada máquina alvo
-1. Crie um usuário chamado `ansible` em cada máquina que será gerenciada.
-2. Dê privilégios de `sudo` para este usuário.
+---
 
-### Passo 2: Configurar o sudo sem senha
-Edite o arquivo `sudoers` para permitir que o usuário `ansible` execute comandos sem senha:
+## Pré-Requisitos
 
-```bash
-ansible ALL=(ALL) NOPASSWD:ALL
-```
+- **Python 3** instalado nas máquinas controladas.
+- **SSH** configurado nas máquinas controladas.
+- Criação de um usuário específico para o Ansible:
+  1. Criar o usuário `ansible`:
+     ```bash
+     sudo useradd -m ansible
+     ```
+  2. Conceder privilégios de `sudo`:
+     ```bash
+     sudo usermod -aG sudo ansible
+     ```
+  3. Configurar o `sudo` para não solicitar senha:
+     ```bash
+     sudo visudo
+     ```
+     Adicione no final do arquivo:
+     ```bash
+     ansible ALL=(ALL) NOPASSWD:ALL
+     ```
 
 ---
 
 ## Configurações de Acesso por Chave SSH
 
-### Passo 1: Gerar uma chave SSH no servidor de controle
-No servidor de controle, execute o comando abaixo para gerar uma chave SSH:
-
-```bash
-ssh-keygen
-```
-
-> Salve a chave no local padrão pressionando **Enter** quando solicitado.
-
-### Passo 2: Copiar a chave pública para as máquinas remotas
-Para cada máquina remota, use o comando:
-
-```bash
-ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@ip_da_maquina_remota
-```
-
-### Passo 3: Configurar o SSH para autenticação somente por chave
-Em cada máquina remota, edite o arquivo `/etc/ssh/sshd_config` e adicione:
-
-```bash
-Match User ansible
-PasswordAuthentication no
-```
-
-### Passo 4: Reiniciar o serviço SSH
-Após as alterações, reinicie o SSH:
-
-```bash
-sudo systemctl restart sshd
-```
-
-### Passo 5: Testar a conexão
-No servidor de controle, teste a conexão SSH com cada máquina remota:
-
-```bash
-ssh ansible@ip_da_maquina_remota
-```
+1. **Gerar uma chave SSH no servidor de controle:**
+   ```bash
+   ssh-keygen
+   ```
+   - Salve no caminho padrão `~/.ssh/id_rsa`.
+2. **Copiar a chave pública para os servidores remotos:**
+   ```bash
+   ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@<IP_DO_SERVIDOR>
+   ```
+3. Verifique o acesso:
+   ```bash
+   ssh ansible@<IP_DO_SERVIDOR>
+   ```
 
 ---
 
 ## Configurações do Ansible
 
-1. **Criar arquivo de configuração do Ansible**:
+1. Crie um arquivo de configuração:
    ```bash
-   touch .ansible.cfg
+   touch ~/.ansible.cfg
    ```
-
-2. **Definir o caminho do arquivo de configuração**:
-   ```bash
-   ANSIBLE_CONFIG=/home/ansible/ansible.cfg ansible --version
-   ```
-
-3. **Criar arquivo de inventário `hosts.cfg`**:
-   Exemplo de configuração:
-
-   ```ini
-   [webservers]
-   cardeal.dominio.br || ip || alias
-
-   [database]
-   azulao.dominio.br || ip || alias
-
-   [ubuntu]
-   cardeal
-   ```
-
-4. **Validar o inventário**:
-   ```bash
-   ansible-inventory -i hosts.cfg --list --yaml
-   ```
-
-5. **Configuração do `ansible.cfg`**:
+2. Adicione a configuração:
    ```ini
    [defaults]
-   inventory=home/ansible/hosts.cfg
+   inventory=~/ansible/hosts.cfg
+   ```
+3. Crie o arquivo de inventário:
+   ```bash
+   touch ~/ansible/hosts.cfg
+   ```
+   Exemplo de conteúdo:
+   ```ini
+   [webservers]
+   192.168.0.10
+   192.168.0.11
+   
+   [databases]
+   192.168.0.20
    ```
 
 ---
 
 ## Sintaxe e Comandos
 
-### Listar módulos de documentação
+### Módulo de usuários
+
+1. **Criar usuário:**
+   ```bash
+   ansible -m user -a "name=teste state=present" all
+   ```
+   Saída esperada:
+   ```json
+   {
+       "changed": true,
+       "name": "teste",
+       "state": "present"
+   }
+   ```
+
+2. **Criar usuário com senha:**
+   Instale o módulo `passlib`:
+   ```bash
+   pip3 install passlib
+   ```
+   Execute o comando:
+   ```bash
+   ansible all -m user -a "name=teste password={{ 'senha' | password_hash('sha512') }} state=present"
+   ```
+
+3. **Remover usuário:**
+   ```bash
+   ansible all -m user -a "name=teste state=absent"
+   ```
+
+---
+
+### Módulo de pacotes
+
+1. **Instalar um pacote:**
+   ```bash
+   ansible all -m package -a "name=nginx state=present"
+   ```
+
+2. **Atualizar pacotes:**
+   ```bash
+   ansible all -m apt -a "upgrade=dist update_cache=yes"
+   ```
+
+---
+
+### Gerenciamento de serviços
+
+1. **Reiniciar serviço:**
+   ```bash
+   ansible all -m service -a "name=nginx state=restarted"
+   ```
+
+2. **Parar serviço:**
+   ```bash
+   ansible all -m service -a "name=nginx state=stopped"
+   ```
+
+---
+
+### Reiniciar servidores
+
+1. **Reiniciar todos os servidores:**
+   ```bash
+   ansible all -m reboot -a "reboot_timeout=10"
+   ```
+
+---
+
+## Playbooks
+
+1. Exemplo simples:
+   ```yaml
+   - hosts: webservers
+     tasks:
+       - name: Instalar Nginx
+         apt:
+           name: nginx
+           state: present
+   ```
+
+Execute o playbook:
 ```bash
-ansible-doc --list
+ansible-playbook site.yml
 ```
 
-### Exemplo de uso do módulo `ping`
-```bash
-ansible -m ping cardeal -u ansible
-```
-
-### Exemplo de uso do módulo `user`
-```bash
-ansible -m user -a "name=user state=present" all
-```
-
-### Criando usuário nas máquinas
-```bash
-ansible -bK -m user -a "name=nome_usuario state=present" all
-```
-
-> Para definir o `become` como padrão, adicione ao `ansible.cfg`:
-
-```ini
-[privilege_escalation]
-become = True
-
+--- 
