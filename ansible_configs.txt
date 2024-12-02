@@ -1,0 +1,231 @@
+Boas praticas Ansible
+
+Pré-Requisitos
+ter o python 3 instalados nas máquinas 
+ssh instalado e configurado 
+
+1.Criar usuario ansible em cada máquina alvo
+
+2.Dar previlegio de sudo para ele
+
+3. Entrar no visudo da máquina e editar para ele não pedir senha ao executar o comando
+>>> sudo visudo
+	exeplo de configuração:
+	# User privilege specification
+	 root    ALL=(ALL:ALL) ALL
+
+	# Allow members of group sudo to execute any command
+	%sudo   ALL=(ALL:ALL) ALL
+
+	# Rule for ansible user
+	ansible ALL=(ALL) NOPASSWD:ALL
+
+====================================================================================================================================================================
+Parte 2
+Configurar para acessar as máquinas via ssh de chave publica 
+
+Passo 1: Gerar uma chave SSH no servidor de controle (onde o Ansible será executado)
+
+1.1. No servidor de controle, como o usuário 'ansible', execute o seguinte comando para gerar a chave SSH:
+
+   ssh-keygen
+
+1.2. Salve a chave no local padrão:
+   - Quando solicitado para salvar a chave, pressione Enter para aceitar o caminho padrão ~/.ssh/id_rsa.
+   - Isso gerará uma chave pública (~/.ssh/id_rsa.pub) e uma chave privada (~/.ssh/id_rsa).
+
+Passo 2: Copiar a chave pública para as máquinas remotas
+
+2.1. Use o comando 'ssh-copy-id' para copiar a chave pública para as máquinas remotas:
+
+   ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@ip_da_maquina_remota
+
+2.2. Repita esse comando para cada máquina, substituindo 'ip_da_maquina_remota' pelo endereço IP de cada máquina de destino.
+
+   Este comando adiciona a chave pública ao arquivo ~/.ssh/authorized_keys do usuário 'ansible' nas máquinas remotas, permitindo o acesso via chave SSH.
+
+
+======================================================================================================================================================================
+Parte 3 - Configurações
+
+1. Criar arquivo: 
+>>>  touch .ansible.cfg no diretorio ansible
+
+2. Fazer alteração forçada para o arquivo criado
+>>>  ANSIBLE_CONFIG=/home/ansible/ansible.cfg  ansible --version
+
+
+3. Criar arquivo hosts.cfg - Ele será o catalogo do ansible
+>>> exemplo de conteudo:
+	[webservers]
+	cardeal.dominio.br || ip || alias
+	
+	[database]
+	azulao.dominio.br || ip || alias
+	
+	[all]
+	todos os grupos
+	
+	[ubuntu]
+	cardeal
+
+	[debian]
+	debian
+	
+	Caso vc tenhas servidores que obdeçam uma lógica de nomeclatura
+	pode fazer assim também:
+	
+	[webservers]
+	web[1:2]
+	
+	Caso queira agrupar por range de ip
+	[all_servers]
+	192.168.0.[11:15]
+	
+	Caso queira aninhar por grupos
+	[servidores:children]
+	ubuntu
+	centos
+	
+4. para validar usar 
+>>> ansible-inventory -i hosts.cfg --list --yaml
+
+5. Escrever dentro do arquivo ansible.cfg
+>>> [defaults]
+	inventory=diretorio_onde_esta_seu_arquivo
+	ex: inventory=home/ansible/hosts.cfg
+	
+======================================================================================================================================================================	
+Parte 4 - Sintaxe e comandos
+
+ansible-doc --list - para checar a doc do ansible
+
+Modulo de usuario
+
+1. ansible [OPTIONS] -m MODULE -a ARGS PATTERN
+   
+   ex: 
+   >>> ansible -m ping cardeal -u ansible
+   
+   saida esperada:
+   >>> cardeal | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+
+
+2. ansible -m user -a "name=user state=present"  
+Verifica se o usuario está presente na máquina 
+se não ele cria o user indicado no comando
+
+   ex: 
+   >>> ansible -m user -a "name=ansible state=present" all
+   
+   saida esperada:
+   >>> cardeal | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3"
+    },
+    "append": false,
+    "changed": false,
+    "comment": ",,,",
+    "group": 1001,
+    "home": "/home/ansible",
+    "move_home": false,
+    "name": "ansible",
+    "shell": "/bin/bash",
+    "state": "present",
+    "uid": 1001
+}
+
+3. Criando usuário nas maquinas
+>>> ansible -bK -m user -a "name=nome_usuario state=present"  all || group || node 
+que você quer aplicar
+b = Become - Habilita para ser usuario sudo
+K = usa o sudo de forma remota 
+	
+	ex: ansible -bK -m user -a "name=testeweb state=present"  ubuntu
+
+	saida esperada:
+	cardeal | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3"
+    },
+    "changed": true,
+    "comment": "",
+    "create_home": true,
+    "group": 1002,
+    "home": "/home/testeweb",
+    "name": "testeweb",
+    "shell": "/bin/sh",
+    "state": "present",
+    "system": false,
+    "uid": 1002
+}
+
+5. Caso queira deixar pro padrão o 'become' escrever no asible.cfg
+>>> [privilege_escalation]
+	become = True
+
+
+6. Criando usuario com senha
+
+6.1 Verificar se tem o pip instalado
+>>> pip 3
+
+6.2 Caso o comando não retorne nada fazer a instalação
+>>> sudo apt install python3-pip 
+				|| 
+	sudo yum install python3-pip
+
+6.3 Agora instalar a lib necesaria
+>>> pip3 install passlib
+
+6.4 Comando para criar o user:
+>>>  ansible host_catalogo -m user -e "password=inserirsenha" -a "name=usurario_que_vc_quer_alterar update_password=always 
+password={{ password | password_hash('sha512') }}"
+
+6.5 Remover um usario:
+>>> ansible webserver -m user -a "name=testeweb state=absent"
+ 
+7. Modulo de pacotes
+
+Sintaxe: ansible -m package -a "name=nome_pacote state=present ou absent" node || group || all 
+ex:  
+>>> ansible -m package -a "name=nginx state=present" webserver
+
+obs: você pode substituir o modulo package por um geraciador de pacotes especifico que a distro utiliza como: apt, yum, dnf, zypper..
+porém tenha certeza que a distro usa esse gerenaciador
+ex:
+>>> ansible -m apt -a "name=nginx state=present" webserver
+
+7.1. Atulizar pacotes do sistema
+ex:
+>>> ansible -m apt -a "upgrade=dist update_cache=yes" node || group || all
+>>> ansible -m yum -a "state=latest update_cache=yes" node || group || all 
+
+
+8. Fazer restart de serviços 
+
+8.1. Sintaxe: ansible -m service -a "name=service_restart state=restarted" node || group| all 
+
+8.2. Exemplo: ansible -m service -a "name=nginx state=restarted" webserver
+
+9 Reiniciar os servidores
+
+9.1 Sintaxe: ansible -m reboot -a "reboot_timeout=ss" node || group || all
+
+9.2 Exemplo:  ansible -m reboot -a "reboot_timeout=10" database
+saida:
+		debian | FAILED! => {
+			"msg": "Failed to connect to the host via ssh: ssh: connect to host debian port 22: Connection timed out"
+			}
+		* Essa saida ocorre pois a máquina ao reiniciar perderá a conexão ssh com o host.
+
+=================================================================================================================================================================
+
+Playbooks
+	
