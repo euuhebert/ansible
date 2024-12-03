@@ -211,21 +211,108 @@ O Ansible é uma ferramenta de automação open-source que facilita o gerenciame
 
 ---
 
-## Playbooks
+### Playbooks
 
-1. Exemplo simples:
-   ```yaml
-   - hosts: webservers
-     tasks:
-       - name: Instalar Nginx
-         apt:
-           name: nginx
-           state: present
+Os playbooks são arquivos YAML que descrevem tarefas a serem executadas em hosts remotos. Eles são a principal forma de automatizar tarefas complexas e sequenciais no Ansible. Aqui está um guia completo para preparar o ambiente e criar playbooks de maneira eficiente.
+
+---
+
+#### Preparando o Ambiente
+
+> **Os passos a seguir são opcionais; você pode usar qualquer editor de texto para criar e editar seus playbooks, como `vim`, `nano` ou `VS Code`. Neste exemplo, configuraremos o VS Code para trabalhar com arquivos YAML.**
+
+---
+
+#### 1. Configurando o VS Code como IDE para Playbooks
+
+1. **Instale a extensão _Remote - SSH_ da Microsoft no VS Code.**
+   
+2. **Configure a conexão SSH com o host remoto:**
+   - Clique no ícone de **+** na extensão Remote - SSH.
+   - Insira o nome do usuário e o IP da máquina onde o Ansible está instalado.  
+     Exemplo:
+     ```bash
+     ssh user@<ip-do-host_remoto>
+     ```
+   - Escolha o diretório onde sua chave SSH está armazenada.  
+     Exemplo:
+     ```
+     C:\Users\user\.ssh\config
+     ```
+   - Insira a senha do usuário no host remoto.
+
+3. **Confirme a conexão.**  
+   A máquina remota agora está conectada ao VS Code.
+
+   > **Observação:** Se o host remoto não tiver a ferramenta `tar` instalada, a conexão pode falhar. Certifique-se de instalá-la antes de continuar:
+   ```bash
+   sudo apt install tar      # Em sistemas baseados em Debian
+   sudo yum install tar      # Em sistemas baseados em Red Hat
    ```
 
-Execute o playbook:
-```bash
-ansible-playbook site.yml
+4. **Instale a extensão _Ansible_ da Red Hat no VS Code.**
+   - Após instalar, clique no botão **Get Started**.
+
+---
+
+#### 2. Configurando Ferramentas Complementares no Host Remoto
+
+1. **Instale a ferramenta `ansible-creator` no terminal do host remoto:**
+   ```bash
+   python3 -m pip install ansible-creator --no-input
+   ```
+
+2. **Instale o `ansible-lint` para verificar seus playbooks:**
+   ```bash
+   python3 -m pip install --user ansible-lint
+   ```
+
+---
+
+#### 3. VS Code Pronto para Gerenciar e Escrever Playbooks
+
+Com as configurações acima, o VS Code estará preparado para criar, editar e validar playbooks de forma prática e eficiente.
+
+---
+
+### Exemplo Simples de Playbook
+
+O exemplo a seguir instala o servidor web **Nginx** em máquinas categorizadas como `webservers`:
+
+```yaml
+- hosts: webservers
+  tasks:
+    - name: Instalar Nginx
+      apt:
+        name: nginx
+        state: present
 ```
 
---- 
+---
+
+Para executar o playbook:
+
+1. Salve o arquivo com a extensão `.yaml` ou `.yml`.  
+   Exemplo: `instalar_nginx.yaml`.
+
+2. Execute o comando no terminal do host de controle:
+   ```bash
+   ansible-playbook instalar_nginx.yaml
+   ```
+
+3. **Saída esperada:**
+   ```bash
+   PLAY [webservers] ************************************************
+
+   TASK [Instalar Nginx] ********************************************
+   changed: [192.168.0.10]
+   changed: [192.168.0.11]
+
+   PLAY RECAP *******************************************************
+   192.168.0.10                : ok=1    changed=1    unreachable=0    failed=0
+   192.168.0.11                : ok=1    changed=1    unreachable=0    failed=0
+   ```
+
+---
+
+Com essa configuração, você pode criar playbooks complexos e aproveitar as vantagens do Ansible para gerenciar sua infraestrutura.
